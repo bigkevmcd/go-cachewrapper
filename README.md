@@ -30,6 +30,8 @@ func main() {
 }
 ```
 
+It's easy to see the result using curl.
+
 ```
 $ curl -i http://localhost:8000/
 HTTP/1.1 200 OK
