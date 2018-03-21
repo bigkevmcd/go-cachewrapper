@@ -44,3 +44,14 @@ Content-Type: text/plain; charset=utf-8
 
 Hello, World!
 ```
+
+Backwards compatibility
+-----------------------
+
+If you need backwards compatibility with `CacheOptions` configuration, you can
+wrap it in a `Config` option with...
+
+```go
+	http.Handle("/", cw.Cached(http.HandlerFunc(helloWorld), cw.{Config(cw.CacheOptions{MaxAge: time.Hour * 24 * 13, NoTransform: true})))
+}
+```

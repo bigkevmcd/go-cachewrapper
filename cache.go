@@ -98,6 +98,13 @@ func SharedMaxAge(d time.Duration) optionFunc {
 	}
 }
 
+// Config takes a CacheOptions value and replaces options.
+func Config(co CacheOptions) optionFunc {
+	return func(o *CacheOptions) {
+		*o = co
+	}
+}
+
 // These set the relevant pragmas in the response per
 // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
 type CacheOptions struct {
