@@ -17,10 +17,14 @@ type CacheControl struct {
 
 // Cached returns an http.Handler that sets appropriate Cache headers on
 // the outgoing response and passes requests to a wrapped http.Handler.
-func Cached(handler http.Handler, o CacheOptions) *CacheControl {
+func Cached(handler http.Handler, opts ...optionFunc) *CacheControl {
+	co := CacheOptions{}
+	for _, o := range opts {
+		o(&co)
+	}
 	return &CacheControl{
 		handler: handler,
-		options: o,
+		options: co,
 	}
 }
 
@@ -31,11 +35,74 @@ func (c *CacheControl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.handler.ServeHTTP(w, r)
 }
 
-// These set the relevant headers in the response per
+// MaxAge configures the maximum-age cache option.
+func MaxAge(d time.Duration) optionFunc {
+	return func(o *CacheOptions) {
+		o.MaxAge = d
+	}
+}
+
+// NoTransform configures the the no-transform pragma.
+func NoTransform() optionFunc {
+	return func(o *CacheOptions) {
+		o.NoTransform = true
+	}
+}
+
+// Immutable configures the max-age pragma to be one year in the future.
+func Immutable() optionFunc {
+	return func(o *CacheOptions) {
+		o.Immutable = true
+	}
+}
+
+// Private configures the private cache option.
+func Private() optionFunc {
+	return func(o *CacheOptions) {
+		o.Private = true
+	}
+}
+
+// NoCache configures the no-cache pragma.
+func NoCache() optionFunc {
+	return func(o *CacheOptions) {
+		o.NoCache = true
+	}
+}
+
+// NoStore configures the no-store pragma.
+func NoStore() optionFunc {
+	return func(o *CacheOptions) {
+		o.NoStore = true
+	}
+}
+
+// MustRevalidate configures the must-revalidate pragma.
+func MustRevalidate() optionFunc {
+	return func(o *CacheOptions) {
+		o.MustRevalidate = true
+	}
+}
+
+// ProxyRevalidate configures the proxy-revalidate pragma.
+func ProxyRevalidate() optionFunc {
+	return func(o *CacheOptions) {
+		o.ProxyRevalidate = true
+	}
+}
+
+// SharedMaxAge configures the s-maxage pragma.
+func SharedMaxAge(d time.Duration) optionFunc {
+	return func(o *CacheOptions) {
+		o.SharedMaxAge = d
+	}
+}
+
+// These set the relevant pragmas in the response per
 // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
 type CacheOptions struct {
 	Immutable       bool
-	IsPrivate       bool
+	Private         bool
 	NoCache         bool
 	NoStore         bool
 	NoTransform     bool
@@ -51,7 +118,7 @@ func (o CacheOptions) String() string {
 		o.MaxAge = ONE_YEAR_IN_HOURS
 	}
 
-	if o.IsPrivate {
+	if o.Private {
 		elements = append(elements, "private")
 	}
 
@@ -85,3 +152,5 @@ func (o CacheOptions) String() string {
 
 	return strings.Join(elements, ", ")
 }
+
+type optionFunc func(o *CacheOptions)

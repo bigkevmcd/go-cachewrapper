@@ -3,6 +3,8 @@ go-cachewrapper
 
 Trivial wrapper for http.Handler that applies Cache-Control headers in the style of DropWizard.
 
+This uses a range of option functions to configure the cache header pragmas.
+
 Example
 -------
 
@@ -15,7 +17,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bigkevmcd/go-cachewrapper"
+	cw "github.com/bigkevmcd/go-cachewrapper"
 )
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +27,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 const cacheTime = time.Minute * 60
 
 func main() {
-	http.Handle("/", cachewrapper.Cached(http.HandlerFunc(helloWorld), cachewrapper.CacheOptions{MaxAge: cacheTime, NoTransform: true}))
+	http.Handle("/", cw.Cached(http.HandlerFunc(helloWorld), cw.MaxAge(cacheTime), cw.NoTransform())
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }
 ```

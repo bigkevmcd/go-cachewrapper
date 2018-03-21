@@ -1,50 +1,29 @@
 package cachewrapper
 
 import (
-	"bytes"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
 
-type testResponseWriter struct {
-	Body        bytes.Buffer
-	StatusCode  int
-	header      http.Header
-}
-
-func (w *testResponseWriter) Header() http.Header {
-	if nil == w.header {
-		w.header = make(map[string][]string)
-	}
-	return w.header
-}
-
-func (w *testResponseWriter) Write(p []byte) (int, error) {
-	return w.Body.Write(p)
-}
-
-func (w *testResponseWriter) WriteHeader(code int) {
-	w.StatusCode = code
-}
-
 func TestCacheControl(t *testing.T) {
-	w := &testResponseWriter{}
+	w := httptest.NewRecorder()
 	r, _ := http.NewRequest("POST", "http://example.com/foo", nil)
-	cached := Cached(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}), CacheOptions{MaxAge: time.Hour * 24 * 13, NoTransform: true})
+	cached := Cached(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}), MaxAge(time.Hour*24*13), NoTransform())
 	cached.ServeHTTP(w, r)
 
 	if "no-transform, max-age=1123200" != w.Header().Get("Cache-Control") {
-		t.Fatalf("Cache-Control headers were %s, expected 'no-transform, max-age=1123200'", w.Header().Get("Cache-Control"))
+		t.Fatalf("Cache-Control header: got %s, wanted 'no-transform, max-age=1123200'", w.Header().Get("Cache-Control"))
 	}
 }
 
-var cacheOptions = []struct {
+var cacheOptionTests = []struct {
 	o CacheOptions
 	h string
 }{
 	{CacheOptions{Immutable: true, NoTransform: true}, "no-transform, max-age=31536000"},
-	{CacheOptions{IsPrivate: true, NoTransform: true}, "private, no-transform"},
+	{CacheOptions{Private: true, NoTransform: true}, "private, no-transform"},
 	{CacheOptions{MaxAge: time.Hour * 24 * 13, NoTransform: true}, "no-transform, max-age=1123200"},
 	{CacheOptions{NoCache: true, NoTransform: true}, "no-cache, no-transform"},
 	{CacheOptions{NoStore: true, NoTransform: true}, "no-store, no-transform"},
@@ -55,9 +34,33 @@ var cacheOptions = []struct {
 }
 
 func TestCacheOptions(t *testing.T) {
-	for _, v := range cacheOptions {
-		if o := v.o.String(); v.h != o {
-			t.Fatalf("%#v got '%s', expected '%s'", v.o, o, v.h)
+	for _, tt := range cacheOptionTests {
+		if o := tt.o.String(); tt.h != o {
+			t.Errorf("%#v got '%s', wanted '%s'", tt.o, o, tt.h)
+		}
+	}
+}
+
+var cacheOptionFuncTests = []struct {
+	f optionFunc
+	h string
+}{
+	{Immutable(), "max-age=31536000"},
+	{Private(), "private"},
+	{MaxAge(time.Hour * 24 * 13), "max-age=1123200"},
+	{NoCache(), "no-cache"},
+	{NoStore(), "no-store"},
+	{MustRevalidate(), "must-revalidate"},
+	{ProxyRevalidate(), "proxy-revalidate"},
+	{SharedMaxAge(time.Hour * 13), "s-maxage=46800"},
+}
+
+func TestOptionFuncs(t *testing.T) {
+	for _, tt := range cacheOptionFuncTests {
+		co := CacheOptions{}
+		tt.f(&co)
+		if msg := co.String(); tt.h != msg {
+			t.Errorf("got '%s', wanted '%s'", msg, tt.h)
 		}
 	}
 }
