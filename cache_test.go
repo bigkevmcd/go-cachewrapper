@@ -10,11 +10,15 @@ import (
 func TestCacheControl(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest("POST", "http://example.com/foo", nil)
-	cached := Cached(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}), MaxAge(time.Hour*24*13), NoTransform())
+	handler := func(w http.ResponseWriter, r *http.Request) {}
+	opts := []optionFunc{MaxAge(time.Hour * 24 * 13), NoTransform()}
+	cached := Cached(http.HandlerFunc(handler), opts...)
+
 	cached.ServeHTTP(w, r)
 
-	if "no-transform, max-age=1123200" != w.Header().Get("Cache-Control") {
-		t.Fatalf("Cache-Control header: got %s, wanted 'no-transform, max-age=1123200'", w.Header().Get("Cache-Control"))
+	wanted := "no-transform, max-age=1123200"
+	if pragmas := w.Header().Get("Cache-Control"); pragmas != wanted {
+		t.Fatalf("Cache-Control header: got %s, wanted '%s'", pragmas, wanted)
 	}
 }
 
@@ -53,6 +57,7 @@ var cacheOptionFuncTests = []struct {
 	{MustRevalidate(), "must-revalidate"},
 	{ProxyRevalidate(), "proxy-revalidate"},
 	{SharedMaxAge(time.Hour * 13), "s-maxage=46800"},
+	{Config(CacheOptions{MaxAge: time.Hour * 24 * 13, NoTransform: true}), "no-transform, max-age=1123200"},
 }
 
 func TestOptionFuncs(t *testing.T) {
@@ -62,5 +67,20 @@ func TestOptionFuncs(t *testing.T) {
 		if msg := co.String(); tt.h != msg {
 			t.Errorf("got '%s', wanted '%s'", msg, tt.h)
 		}
+	}
+}
+
+func TestMaintainsExistingCacheOptions(t *testing.T) {
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("POST", "http://example.com/foo", nil)
+	handler := func(w http.ResponseWriter, r *http.Request) { w.Header().Set("Cache-Control", "must-revalidate") }
+	opts := []optionFunc{MaxAge(time.Hour * 24 * 13), NoTransform()}
+	cached := Cached(http.HandlerFunc(handler), opts...)
+
+	cached.ServeHTTP(w, r)
+
+	wanted := "must-revalidate"
+	if pragmas := w.Header().Get("Cache-Control"); pragmas != wanted {
+		t.Fatalf("Cache-Control header: got %s, wanted '%s'", pragmas, wanted)
 	}
 }
