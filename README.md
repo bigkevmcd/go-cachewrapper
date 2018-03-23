@@ -54,3 +54,14 @@ wrap it in a `Config` option with...
 ```go
 http.Handle("/", cw.Cached(http.HandlerFunc(helloWorld), cw.Config(cw.CacheOptions{MaxAge: time.Hour * 24 * 13, NoTransform: true})))
 ```
+
+Builder API
+-----------
+
+The CacheWrapper also has a builder API.
+
+```go
+w := CacheWrapper().Immutable().Private().Wrap(http.HandlerFunc(handler))
+http.Handle("/", w)
+log.Fatal(http.ListenAndServe(":8000", nil))
+```
